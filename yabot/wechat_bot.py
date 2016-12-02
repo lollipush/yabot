@@ -36,18 +36,18 @@ class WechatBot(object):
 
         text = msg['Text'].strip()
         from_nickname = msg['ActualNickName']
-        is_at = msg['isAt']
+        is_command = text.startswith(u'整 ')
 
         chatroom_uin = chatroom_d['Uin']
 
         if chatroom_uin not in self.chatroom_uin_monitors:
             return
 
-        if is_at:
-            text = u'\u2005'.join(text.split(u'\u2005')[1:])
+        if is_command:
+            text = text[2:]
 
         for monitor in self.chatroom_uin_monitors[chatroom_uin]:
-            if is_at:
+            if is_command:
                 ret = monitor.process_command(from_nickname, text)
             else:
                 ret = monitor.process_text(from_nickname, text)
