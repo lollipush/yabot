@@ -3,6 +3,7 @@
 # ya - > 雅
 
 import re
+import jieba
 
 from functools import partial
 from yabot.models.rankboard import RankBoard
@@ -40,9 +41,11 @@ class YaMonitor(object):
     def process_text(self, send_from, text):
         yaless_word = []
 
+        tks = set(jieba.cut(text))
+
         # todo 分词
         for word in self.yaless_word_set.words():
-            if word in text:
+            if word in tks:
                 self.rankboard.add_score(send_from, 1)
                 yaless_word.append(word)
             else:
