@@ -21,6 +21,7 @@ class YalessWordSet(StorgeMixin):
 
     def add_yaless_word(self, word):
         self.word_set.add(word.strip())
+        jieba.add_word(word.strip())
 
     def words(self):
         return list(self.word_set)
@@ -41,27 +42,22 @@ class YaMonitor(object):
     def process_text(self, send_from, text):
         yaless_word = []
 
-        tks = set(jieba.cut(text))
-
-        # todo 分词
-        for word in self.yaless_word_set.words():
-            if word in tks:
-                self.rankboard.add_score(send_from, 1)
-                yaless_word.append(word)
-            else:
-                self.rankboard.add_score(send_from, 0)
-
+        tks = set(jieba.cut(text, cut_all=True))
+        yaless_word = tks & set(self.yaless_word_set.words())
+        self.rankboard.add_score(send_from, len(yaless_word))
         if not yaless_word:
             return
 
-        return u'低俗!!! \n@%s 说了低俗词语"%s"' % (send_from, u'、'.join(yaless_word))
+        return u'低俗!!! \n%s 说了低俗词语"%s"' % (send_from, u'、'.join(yaless_word))
 
     def process_command(self, send_from, text):
         return self._process_command_add_yaless_word(send_from, text) or \
-            self._process_command_show_rankboard(send_from, text)
+            self._process_command_show_rankboard(send_from, text) or \
+            self._process_command_show_yaless_word(send_from, text) or \
+            self._process_command_help(send_from, text)
 
     def _process_command_add_yaless_word(self, send_from, text):
-        match = re.match(ur'新增低俗词 (.+)', text)
+        match = re.match(ur'个新低俗词 (.+)', text)
         if not match:
             return
 
@@ -70,16 +66,30 @@ class YaMonitor(object):
             return u'你傻啊，已经有这个低俗词了啊'
 
         vote = VotePool.create_vote(3, partial(self._add_yaless_word_callback, word), u'已新增不雅词“%s”' % word, 300)
-        return u'下面开始为新增低俗词“%s”投票\n同意的人请@我并回复: \n投票 %s' % (word, vote.id)
+        return u'下面开始为新增低俗词“%s”投票\n同意的人请回复: 整 投票 %s' % (word, vote.id)
 
     def _add_yaless_word_callback(self, word):
         self.yaless_word_set.add_yaless_word(word)
 
     def _process_command_show_rankboard(self, send_from, text):
-        if text != u'我要看低俗排行榜':
+        if text != u'看低俗榜':
             return
 
         l = [u'低俗榜']
         for index, (member, score) in enumerate(self.rankboard.show_rank()):
             l.append(u'第%s名: %s %s次' % (index+1, member.nickname, score))
+        return u'\n'.join(l)
+
+    def _process_command_show_yaless_word(self, send_from, text):
+        if text != u'看低俗词':
+            return
+        l = [u'低俗词']
+        for word in self.yaless_word_set.words():
+            l.append(word)
+        return u'\n'.join(l)
+
+    def _process_command_help(self, send_from, text):
+        if text != u'帮助':
+            return
+        l = [u'教你咋整', u'整 个新低俗词 xxx', u'整 看低俗榜', u'整 看低俗词']
         return u'\n'.join(l)
