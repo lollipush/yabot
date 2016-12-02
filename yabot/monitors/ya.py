@@ -23,6 +23,13 @@ class YalessWordSet(StorgeMixin):
         self.word_set.add(word.strip())
         jieba.add_word(word.strip())
 
+    def remove_yaless_word(self, word):
+        try:
+            self.word_set.remove(word.strip())
+            jieba.del_word(word.strip())
+        except KeyError:
+            pass
+
     def words(self):
         return list(self.word_set)
 
@@ -52,6 +59,7 @@ class YaMonitor(object):
 
     def process_command(self, send_from, text):
         return self._process_command_add_yaless_word(send_from, text) or \
+            self._process_command_remove_yaless_word(send_from, text) or \
             self._process_command_show_rankboard(send_from, text) or \
             self._process_command_show_yaless_word(send_from, text) or \
             self._process_command_help(send_from, text)
@@ -66,10 +74,25 @@ class YaMonitor(object):
             return u'你傻啊，已经有这个低俗词了啊'
 
         vote = VotePool.create_vote(3, partial(self._add_yaless_word_callback, word), u'已新增不雅词“%s”' % word, 300)
-        return u'下面开始为新增低俗词“%s”投票\n同意的人请回复: 整 投票 %s' % (word, vote.id)
+        return u'下面开始为新增低俗词“%s”投票\n同意的人请回复: \n整 投票 %s' % (word, vote.id)
+
+    def _process_command_remove_yaless_word(self, send_from, text):
+        match = re.match(ur'删低俗词 (.+)', text)
+        if not match:
+            return
+
+        word = match.group(1)
+        if not self.yaless_word_set.is_yaless_word(word):
+            return u'你傻啊，没有这个低俗词啊'
+
+        vote = VotePool.create_vote(3, partial(self._remove_yaless_word_callback, word), u'已删不雅词“%s”' % word, 300)
+        return u'下面开始为删除低俗词“%s”投票\n同意的人请回复: \n整 投票 %s' % (word, vote.id)
 
     def _add_yaless_word_callback(self, word):
         self.yaless_word_set.add_yaless_word(word)
+
+    def _remove_yaless_word_callback(self, word):
+        self.yaless_word_set.remove_yaless_word(word)
 
     def _process_command_show_rankboard(self, send_from, text):
         if text != u'看低俗榜':
@@ -91,5 +114,5 @@ class YaMonitor(object):
     def _process_command_help(self, send_from, text):
         if text != u'帮助':
             return
-        l = [u'教你咋整', u'整 个新低俗词 xxx', u'整 看低俗榜', u'整 看低俗词']
+        l = [u'教你咋整', u'整 个新低俗词 xxx', u'整 看低俗榜', u'整 看低俗词', u'整 删低俗词 xxx']
         return u'\n'.join(l)
