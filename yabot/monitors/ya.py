@@ -42,7 +42,7 @@ class YaMonitor(object):
     def process_text(self, send_from, text):
         yaless_word = []
 
-        tks = set(jieba.cut(text, cut_all=True))
+        tks = set(jieba.cut(text))
         yaless_word = tks & set(self.yaless_word_set.words())
         self.rankboard.add_score(send_from, len(yaless_word))
         if not yaless_word:
